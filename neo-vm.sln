@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.329
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "neo-vm", "neo-vm\neo-vm.csproj", "{AF4E283D-65E2-46A8-BD21-49EB312BF54E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF4E283D-65E2-46A8-BD21-49EB312BF54E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF4E283D-65E2-46A8-BD21-49EB312BF54E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF4E283D-65E2-46A8-BD21-49EB312BF54E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF4E283D-65E2-46A8-BD21-49EB312BF54E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D0A0A02A-929E-403D-94DD-11B8116FB902}
+	EndGlobalSection
+EndGlobal
