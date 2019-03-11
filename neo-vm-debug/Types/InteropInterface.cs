@@ -11,8 +11,9 @@ namespace Neo.VM.Types
 
         public abstract T GetInterface<T>() where T : class;
     }
+
     public class InteropInterface<T> : InteropInterface
-       where T : class
+        where T : class
     {
         private T _object;
 
