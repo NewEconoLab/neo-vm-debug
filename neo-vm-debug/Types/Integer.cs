@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Numerics;
 
 namespace Neo.VM.Types
@@ -27,7 +26,7 @@ namespace Neo.VM.Types
             {
                 return false;
             }
-            return GetByteArray().SequenceEqual(bytes_other);
+            return Unsafe.MemoryEquals(GetByteArray(), bytes_other);
         }
 
         public override BigInteger GetBigInteger()
@@ -37,12 +36,20 @@ namespace Neo.VM.Types
 
         public override bool GetBoolean()
         {
-            return value != BigInteger.Zero;
+            return !value.IsZero;
         }
 
         public override byte[] GetByteArray()
         {
             return value.ToByteArray();
+        }
+
+        private int _length = -1;
+        public override int GetByteLength()
+        {
+            if (_length == -1)
+                _length = value.ToByteArray().Length;
+            return _length;
         }
     }
 }
