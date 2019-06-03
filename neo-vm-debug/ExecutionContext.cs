@@ -1,16 +1,14 @@
-﻿using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 
 namespace Neo.VM
 {
     public class ExecutionContext
     {
-        private readonly Dictionary<int, Instruction> instructions = new Dictionary<int, Instruction>();
 
         /// <summary>
         /// Number of items to be returned
         /// </summary>
-        internal int RVCount { get; }
+        public int RVCount { get; }
 
         /// <summary>
         /// Script
@@ -34,6 +32,7 @@ namespace Neo.VM
 
         public Instruction CurrentInstruction
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return GetInstruction(InstructionPointer);
@@ -45,6 +44,7 @@ namespace Neo.VM
         /// </summary>
         public Instruction NextInstruction
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return GetInstruction(InstructionPointer + CurrentInstruction.Size);
@@ -67,6 +67,7 @@ namespace Neo.VM
         /// Constructor
         /// </summary>
         /// <param name="script">Script</param>
+        /// <param name="callingScriptHash">Script hash of the calling script</param>
         /// <param name="rvcount">Number of items to be returned</param>
         internal ExecutionContext(Script script, int rvcount)
         {
@@ -74,16 +75,8 @@ namespace Neo.VM
             this.Script = script;
         }
 
-        private Instruction GetInstruction(int ip)
-        {
-            if (ip >= Script.Length) return Instruction.RET;
-            if (!instructions.TryGetValue(ip, out Instruction instruction))
-            {
-                instruction = new Instruction(Script, ip);
-                instructions.Add(ip, instruction);
-            }
-            return instruction;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private Instruction GetInstruction(int ip) => Script.GetInstruction(ip);
 
         internal bool MoveNext()
         {
