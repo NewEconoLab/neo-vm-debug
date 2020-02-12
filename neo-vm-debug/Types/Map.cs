@@ -1,107 +1,87 @@
-﻿using System;
+using Neo.VM.Collections;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Neo.VM.Types
 {
-    public class Map : StackItem, ICollection, IDictionary<StackItem, StackItem>
+    public class Map : CompoundType, IReadOnlyDictionary<PrimitiveType, StackItem>
     {
-        private readonly Dictionary<StackItem, StackItem> dictionary;
+        public const int MaxKeySize = 64;
 
-        public StackItem this[StackItem key]
+        private readonly OrderedDictionary<PrimitiveType, StackItem> dictionary = new OrderedDictionary<PrimitiveType, StackItem>();
+
+        public StackItem this[PrimitiveType key]
         {
-            get => this.dictionary[key];
-            set => this.dictionary[key] = value;
+            get
+            {
+                return dictionary[key];
+            }
+            set
+            {
+                if (key.Size > MaxKeySize)
+                    throw new ArgumentException();
+                if (ReferenceCounter != null)
+                {
+                    if (dictionary.TryGetValue(key, out StackItem old_value))
+                        ReferenceCounter.RemoveReference(old_value, this);
+                    else
+                        ReferenceCounter.AddReference(key, this);
+                    ReferenceCounter.AddReference(value, this);
+                }
+                dictionary[key] = value;
+            }
         }
 
-        public ICollection<StackItem> Keys => dictionary.Keys;
-        public ICollection<StackItem> Values => dictionary.Values;
-        public int Count => dictionary.Count;
-        public bool IsReadOnly => false;
+        public override int Count => dictionary.Count;
+        public IEnumerable<PrimitiveType> Keys => dictionary.Keys;
+        internal override IEnumerable<StackItem> SubItems => Keys.Concat(Values);
+        internal override int SubItemsCount => dictionary.Count * 2;
+        public override StackItemType Type => StackItemType.Map;
+        public IEnumerable<StackItem> Values => dictionary.Values;
 
-        bool ICollection.IsSynchronized => false;
-        object ICollection.SyncRoot => dictionary;
-
-        public Map() : this(new Dictionary<StackItem, StackItem>()) { }
-
-        public Map(Dictionary<StackItem, StackItem> value)
+        public Map(ReferenceCounter referenceCounter = null)
+            : base(referenceCounter)
         {
-            this.dictionary = value;
         }
 
-        public void Add(StackItem key, StackItem value)
+        public override void Clear()
         {
-            dictionary.Add(key, value);
-        }
-
-        void ICollection<KeyValuePair<StackItem, StackItem>>.Add(KeyValuePair<StackItem, StackItem> item)
-        {
-            dictionary.Add(item.Key, item.Value);
-        }
-
-        public void Clear()
-        {
+            if (ReferenceCounter != null)
+                foreach (var pair in dictionary)
+                {
+                    ReferenceCounter.RemoveReference(pair.Key, this);
+                    ReferenceCounter.RemoveReference(pair.Value, this);
+                }
             dictionary.Clear();
         }
 
-        bool ICollection<KeyValuePair<StackItem, StackItem>>.Contains(KeyValuePair<StackItem, StackItem> item)
-        {
-            return dictionary.ContainsKey(item.Key);
-        }
-
-        public bool ContainsKey(StackItem key)
+        public bool ContainsKey(PrimitiveType key)
         {
             return dictionary.ContainsKey(key);
         }
 
-        void ICollection<KeyValuePair<StackItem, StackItem>>.CopyTo(KeyValuePair<StackItem, StackItem>[] array, int arrayIndex)
+        IEnumerator<KeyValuePair<PrimitiveType, StackItem>> IEnumerable<KeyValuePair<PrimitiveType, StackItem>>.GetEnumerator()
         {
-            foreach (KeyValuePair<StackItem, StackItem> item in dictionary)
-                array[arrayIndex++] = item;
-        }
-
-        void ICollection.CopyTo(System.Array array, int index)
-        {
-            foreach (KeyValuePair<StackItem, StackItem> item in dictionary)
-                array.SetValue(item, index++);
-        }
-
-        public override bool Equals(StackItem other)
-        {
-            return ReferenceEquals(this, other);
-        }
-
-        public override bool GetBoolean()
-        {
-            return true;
-        }
-
-        public override byte[] GetByteArray()
-        {
-            throw new NotSupportedException();
-        }
-
-        IEnumerator<KeyValuePair<StackItem, StackItem>> IEnumerable<KeyValuePair<StackItem, StackItem>>.GetEnumerator()
-        {
-            return dictionary.GetEnumerator();
+            return ((IDictionary<PrimitiveType, StackItem>)dictionary).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return dictionary.GetEnumerator();
+            return ((IDictionary<PrimitiveType, StackItem>)dictionary).GetEnumerator();
         }
 
-        public bool Remove(StackItem key)
+        public bool Remove(PrimitiveType key)
         {
-            return dictionary.Remove(key);
+            if (!dictionary.Remove(key, out StackItem old_value))
+                return false;
+            ReferenceCounter?.RemoveReference(key, this);
+            ReferenceCounter?.RemoveReference(old_value, this);
+            return true;
         }
 
-        bool ICollection<KeyValuePair<StackItem, StackItem>>.Remove(KeyValuePair<StackItem, StackItem> item)
-        {
-            return dictionary.Remove(item.Key);
-        }
-
-        public bool TryGetValue(StackItem key, out StackItem value)
+        public bool TryGetValue(PrimitiveType key, out StackItem value)
         {
             return dictionary.TryGetValue(key, out value);
         }

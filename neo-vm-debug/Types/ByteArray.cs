@@ -1,42 +1,51 @@
-﻿using System;
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Neo.VM.Types
 {
-    public class ByteArray : StackItem
+    [DebuggerDisplay("Type={GetType().Name}, Value={System.BitConverter.ToString(Memory.ToArray()).Replace(\"-\", string.Empty)}")]
+    public class ByteArray : PrimitiveType
     {
-        private byte[] value;
+        public static readonly ByteArray Empty = ReadOnlyMemory<byte>.Empty;
 
-        public ByteArray(byte[] value)
+        internal override ReadOnlyMemory<byte> Memory { get; }
+        public override StackItemType Type => StackItemType.ByteArray;
+
+        public ByteArray(ReadOnlyMemory<byte> value)
         {
-            this.value = value;
+            this.Memory = value;
         }
 
-        public override bool Equals(StackItem other)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ReadOnlyMemory<byte>(ByteArray value)
         {
-            if (ReferenceEquals(this, other)) return true;
-            if (ReferenceEquals(null, other)) return false;
-            byte[] bytes_other;
-            try
-            {
-                bytes_other = other.GetByteArray();
-            }
-            catch (NotSupportedException)
-            {
-                return false;
-            }
-            return Unsafe.MemoryEquals(value, bytes_other);
+            return value.Memory;
         }
 
-        public override bool GetBoolean()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ReadOnlySpan<byte>(ByteArray value)
         {
-            if (value.Length > ExecutionEngine.MaxSizeForBigInteger)
-                return true;
-            return Unsafe.NotZero(value);
+            return value.Memory.Span;
         }
 
-        public override byte[] GetByteArray()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ByteArray(byte[] value)
         {
-            return value;
+            return new ByteArray(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ByteArray(ReadOnlyMemory<byte> value)
+        {
+            return new ByteArray(value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ByteArray(string value)
+        {
+            return new ByteArray(Encoding.UTF8.GetBytes(value));
         }
     }
 }

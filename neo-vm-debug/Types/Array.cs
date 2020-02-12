@@ -1,72 +1,69 @@
-﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Neo.VM.Types
 {
-    public class Array : StackItem, ICollection, IList<StackItem>
+    public class Array : CompoundType, IReadOnlyList<StackItem>
     {
         protected readonly List<StackItem> _array;
 
         public StackItem this[int index]
         {
-            get => _array[index];
-            set => _array[index] = value;
+            get
+            {
+                return _array[index];
+            }
+            set
+            {
+                ReferenceCounter?.RemoveReference(_array[index], this);
+                _array[index] = value;
+                ReferenceCounter?.AddReference(value, this);
+            }
         }
 
-        public int Count => _array.Count;
-        public bool IsReadOnly => false;
+        public override int Count => _array.Count;
+        internal override IEnumerable<StackItem> SubItems => _array;
+        internal override int SubItemsCount => _array.Count;
+        public override StackItemType Type => StackItemType.Array;
 
-        bool ICollection.IsSynchronized => false;
-        object ICollection.SyncRoot => _array;
-
-        public Array() : this(new List<StackItem>()) { }
-
-        public Array(IEnumerable<StackItem> value)
+        public Array(IEnumerable<StackItem> value = null)
+            : this(null, value)
         {
-            this._array = value as List<StackItem> ?? value.ToList();
+        }
+
+        public Array(ReferenceCounter referenceCounter, IEnumerable<StackItem> value = null)
+            : base(referenceCounter)
+        {
+            _array = value switch
+            {
+                null => new List<StackItem>(),
+                List<StackItem> list => list,
+                _ => new List<StackItem>(value)
+            };
+            if (referenceCounter != null)
+                foreach (StackItem item in _array)
+                    referenceCounter.AddReference(item, this);
         }
 
         public void Add(StackItem item)
         {
             _array.Add(item);
+            ReferenceCounter?.AddReference(item, this);
         }
 
-        public void Clear()
+        public override void Clear()
         {
+            if (ReferenceCounter != null)
+                foreach (StackItem item in _array)
+                    ReferenceCounter.RemoveReference(item, this);
             _array.Clear();
         }
 
-        public bool Contains(StackItem item)
+        public override StackItem ConvertTo(StackItemType type)
         {
-            return _array.Contains(item);
-        }
-
-        void ICollection<StackItem>.CopyTo(StackItem[] array, int arrayIndex)
-        {
-            _array.CopyTo(array, arrayIndex);
-        }
-
-        void ICollection.CopyTo(System.Array array, int index)
-        {
-            foreach (StackItem item in _array)
-                array.SetValue(item, index++);
-        }
-
-        public override bool Equals(StackItem other)
-        {
-            return ReferenceEquals(this, other);
-        }
-
-        public override bool GetBoolean()
-        {
-            return true;
-        }
-
-        public override byte[] GetByteArray()
-        {
-            throw new NotSupportedException();
+            if (Type == StackItemType.Array && type == StackItemType.Struct)
+                return new Struct(ReferenceCounter, new List<StackItem>(_array));
+            return base.ConvertTo(type);
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -79,23 +76,9 @@ namespace Neo.VM.Types
             return _array.GetEnumerator();
         }
 
-        int IList<StackItem>.IndexOf(StackItem item)
-        {
-            return _array.IndexOf(item);
-        }
-
-        public void Insert(int index, StackItem item)
-        {
-            _array.Insert(index, item);
-        }
-
-        bool ICollection<StackItem>.Remove(StackItem item)
-        {
-            return _array.Remove(item);
-        }
-
         public void RemoveAt(int index)
         {
+            ReferenceCounter?.RemoveReference(_array[index], this);
             _array.RemoveAt(index);
         }
 

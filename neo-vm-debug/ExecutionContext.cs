@@ -1,14 +1,19 @@
-﻿using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Neo.VM
 {
-    public class ExecutionContext
+    [DebuggerDisplay("RVCount={RVCount}, InstructionPointer={InstructionPointer}")]
+    public sealed class ExecutionContext
     {
+        private readonly Dictionary<Type, object> states;
 
         /// <summary>
         /// Number of items to be returned
         /// </summary>
-        public int RVCount { get; }
+        internal int RVCount { get; }
 
         /// <summary>
         /// Script
@@ -18,12 +23,13 @@ namespace Neo.VM
         /// <summary>
         /// Evaluation stack
         /// </summary>
-        public ExecutionStackRecord EvaluationStack { get; } = new ExecutionStackRecord();
+        public EvaluationStack EvaluationStack { get; }
 
-        /// <summary>
-        /// Alternative stack
-        /// </summary>
-        public RandomAccessStack<StackItem> AltStack { get; } = new RandomAccessStack<StackItem>();
+        public Slot StaticFields { get; internal set; }
+
+        public Slot LocalVariables { get; internal set; }
+
+        public Slot Arguments { get; internal set; }
 
         /// <summary>
         /// Instruction pointer
@@ -52,31 +58,40 @@ namespace Neo.VM
         }
 
         /// <summary>
-        /// Cached script hash
-        /// </summary>
-        public byte[] ScriptHash
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                return Script.ScriptHash;
-            }
-        }
-
-        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="script">Script</param>
-        /// <param name="callingScriptHash">Script hash of the calling script</param>
         /// <param name="rvcount">Number of items to be returned</param>
-        internal ExecutionContext(Script script, int rvcount)
+        internal ExecutionContext(Script script, int rvcount, ReferenceCounter referenceCounter)
+            : this(script, rvcount, new EvaluationStack(referenceCounter), new Dictionary<Type, object>())
+        {
+        }
+
+        private ExecutionContext(Script script, int rvcount, EvaluationStack stack, Dictionary<Type, object> states)
         {
             this.RVCount = rvcount;
             this.Script = script;
+            this.EvaluationStack = stack;
+            this.states = states;
+        }
+
+        internal ExecutionContext Clone()
+        {
+            return new ExecutionContext(Script, 0, EvaluationStack, states) { StaticFields = StaticFields };
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Instruction GetInstruction(int ip) => Script.GetInstruction(ip);
+
+        public T GetState<T>() where T : class, new()
+        {
+            if (!states.TryGetValue(typeof(T), out object value))
+            {
+                value = new T();
+                states[typeof(T)] = value;
+            }
+            return (T)value;
+        }
 
         internal bool MoveNext()
         {

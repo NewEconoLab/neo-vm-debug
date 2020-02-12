@@ -1,28 +1,16 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Neo.VM
 {
+    [DebuggerDisplay("Length={Length}")]
     public class Script
     {
-        private byte[] _scriptHash = null;
-
+        private int _hashCode = -1;
         private readonly byte[] _value;
-        private readonly ICrypto _crypto;
         private readonly Dictionary<int, Instruction> _instructions = new Dictionary<int, Instruction>();
-
-        /// <summary>
-        /// Cached script hash
-        /// </summary>
-        public byte[] ScriptHash
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                if (_scriptHash == null) _scriptHash = _crypto.Hash160(_value);
-                return _scriptHash;
-            }
-        }
 
         /// <summary>
         /// Script length
@@ -53,23 +41,31 @@ namespace Neo.VM
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="crypto">Crypto</param>
         /// <param name="script">Script</param>
-        public Script(ICrypto crypto, byte[] script)
+        public Script(byte[] script)
         {
-            _crypto = crypto;
             _value = script;
         }
 
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// <param name="hash">Hash</param>
-        /// <param name="script">Script</param>
-        internal Script(byte[] hash, byte[] script)
+        public override bool Equals(object obj)
         {
-            _scriptHash = hash;
-            _value = script;
+            if (this == obj) return true;
+            if (!(obj is Script script)) return false;
+            return _value.AsSpan().SequenceEqual(script._value);
+        }
+
+        public unsafe override int GetHashCode()
+        {
+            if (_hashCode == -1)
+            {
+                unchecked
+                {
+                    _hashCode = 17;
+                    foreach (byte element in _value)
+                        _hashCode = _hashCode * 31 + element;
+                }
+            }
+            return _hashCode;
         }
 
         public Instruction GetInstruction(int ip)
@@ -83,9 +79,7 @@ namespace Neo.VM
             return instruction;
         }
 
-        public static implicit operator byte[](Script script)
-        {
-            return script._value;
-        }
+        public static implicit operator byte[](Script script) => script._value;
+        public static implicit operator Script(byte[] script) => new Script(script);
     }
 }
