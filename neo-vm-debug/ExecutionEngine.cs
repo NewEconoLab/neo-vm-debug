@@ -277,16 +277,19 @@ namespace Neo.VM
                         if (!ExecuteCall(x.Position)) return false;
                         break;
                     }
-                case OpCode.THROW:
+                case OpCode.ABORT:
                     {
                         return false;
                     }
-                case OpCode.THROWIF:
-                case OpCode.THROWIFNOT:
+                case OpCode.ASSERT:
                     {
                         if (!TryPop(out bool x)) return false;
-                        if (x ^ (instruction.OpCode == OpCode.THROWIFNOT)) return false;
+                        if (!x) return false;
                         break;
+                    }
+                case OpCode.THROW:
+                    {
+                        return false;
                     }
                 case OpCode.RET:
                     {
@@ -1283,7 +1286,7 @@ namespace Neo.VM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryPop(out ReadOnlySpan<byte> b)
         {
-            if (!TryPop(out StackItem item))
+            if (!CurrentContext.EvaluationStack.TryPeek(out StackItem item))
             {
                 b = default;
                 return false;
@@ -1291,9 +1294,11 @@ namespace Neo.VM
             switch (item)
             {
                 case PrimitiveType primitive:
+                    CurrentContext.EvaluationStack.Pop();
                     b = primitive.Span;
                     return true;
                 case Buffer buffer:
+                    CurrentContext.EvaluationStack.Pop();
                     b = buffer.InnerBuffer;
                     return true;
                 default:
@@ -1320,16 +1325,39 @@ namespace Neo.VM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryPop(out int i)
         {
-            if (!TryPop(out BigInteger item) || item < int.MinValue || item > int.MaxValue)
+            if (!CurrentContext.EvaluationStack.TryPeek(out PrimitiveType item))
             {
                 i = default;
                 return false;
             }
-            else
+            BigInteger bi = item.ToBigInteger();
+            if (bi < int.MinValue || bi > int.MaxValue)
             {
-                i = (int)item;
-                return true;
+                i = default;
+                return false;
             }
+            CurrentContext.EvaluationStack.Pop();
+            i = (int)bi;
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryPop(out uint i)
+        {
+            if (!CurrentContext.EvaluationStack.TryPeek(out PrimitiveType item))
+            {
+                i = default;
+                return false;
+            }
+            BigInteger bi = item.ToBigInteger();
+            if (bi < uint.MinValue || bi > uint.MaxValue)
+            {
+                i = default;
+                return false;
+            }
+            CurrentContext.EvaluationStack.Pop();
+            i = (uint)bi;
+            return true;
         }
     }
 }
