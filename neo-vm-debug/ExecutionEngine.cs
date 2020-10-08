@@ -92,7 +92,6 @@ namespace Neo.VM
             base.Set(index, item);
         }
     }
-
     public class ExecutionEngine : IDisposable
     {
         #region Limits Variables
@@ -167,7 +166,7 @@ namespace Neo.VM
         /// <param name="length">Length</param>
         /// <returns>Return True if are allowed, otherwise False</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual bool CheckArraySize(int length) => length <= MaxArraySize;
+        public bool CheckArraySize(int length) => length <= MaxArraySize;
 
         /// <summary>
         /// Check if the is possible to overflow the MaxItemSize
@@ -175,7 +174,7 @@ namespace Neo.VM
         /// <param name="length">Length</param>
         /// <returns>Return True if are allowed, otherwise False</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual bool CheckMaxItemSize(int length) => length >= 0 && length <= MaxItemSize;
+        public bool CheckMaxItemSize(int length) => length >= 0 && length <= MaxItemSize;
 
         /// <summary>
         /// Check if the is possible to overflow the MaxInvocationStack
@@ -191,7 +190,7 @@ namespace Neo.VM
         /// <param name="value">Value</param>
         /// <returns>Return True if are allowed, otherwise False</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual bool CheckBigInteger(BigInteger value) => value.ToByteArray().Length <= MaxSizeForBigInteger;
+        public bool CheckBigInteger(BigInteger value) => value.ToByteArray().Length <= MaxSizeForBigInteger;
 
         /// <summary>
         /// Check if the number is allowed from SHL and SHR
@@ -208,7 +207,7 @@ namespace Neo.VM
         /// <param name="strict">Is stack count strict?</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public virtual bool CheckStackSize(bool strict, int count = 1)
+        public bool CheckStackSize(bool strict, int count = 1)
         {
             is_stackitem_count_strict &= strict;
             stackitem_count += count;
@@ -425,7 +424,7 @@ namespace Neo.VM
                     case OpCode.SYSCALL:
                         {
                             if (instruction.Operand.Length > 252) return false;
-                            SetParam(instruction.OpCode,instruction.Operand);
+                            SetParam(instruction.OpCode, instruction.Operand);
                             if (Service?.Invoke(instruction.Operand, this) != true || !CheckStackSize(false, int.MaxValue))
                                 return false;
                             break;
@@ -913,8 +912,7 @@ namespace Neo.VM
 
                             try
                             {
-                                var a = Crypto.VerifySignature(ScriptContainer.GetMessage(), signature, pubkey);
-                                context.EvaluationStack.Push(a);
+                                context.EvaluationStack.Push(Crypto.VerifySignature(ScriptContainer.GetMessage(), signature, pubkey));
                             }
                             catch (ArgumentException)
                             {
@@ -1128,6 +1126,7 @@ namespace Neo.VM
                                         : new Struct(array);
 
                                 context.EvaluationStack.Push(result);
+                                if (!CheckStackSize(false, int.MaxValue)) return false;
                             }
                             else
                             {
@@ -1147,7 +1146,6 @@ namespace Neo.VM
                                     : new Struct(items);
 
                                 context.EvaluationStack.Push(result);
-
                                 if (!CheckStackSize(true, count)) return false;
                             }
                             break;
@@ -1332,6 +1330,7 @@ namespace Neo.VM
         {
 
         }
+
         public ExecutionContext LoadScript(byte[] script, int rvcount = -1)
         {
             return LoadScript(new Script(Crypto, script), rvcount);

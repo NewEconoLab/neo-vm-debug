@@ -4,7 +4,6 @@ namespace Neo.VM
 {
     public class ExecutionContext
     {
-
         /// <summary>
         /// Number of items to be returned
         /// </summary>
@@ -18,7 +17,7 @@ namespace Neo.VM
         /// <summary>
         /// Evaluation stack
         /// </summary>
-        public ExecutionStackRecord EvaluationStack { get; } = new ExecutionStackRecord();
+        public RandomAccessStack<StackItem> EvaluationStack { get; } = new RandomAccessStack<StackItem>();
 
         /// <summary>
         /// Alternative stack
@@ -67,7 +66,6 @@ namespace Neo.VM
         /// Constructor
         /// </summary>
         /// <param name="script">Script</param>
-        /// <param name="callingScriptHash">Script hash of the calling script</param>
         /// <param name="rvcount">Number of items to be returned</param>
         internal ExecutionContext(Script script, int rvcount)
         {
